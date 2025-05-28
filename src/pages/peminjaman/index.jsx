@@ -2,6 +2,7 @@ import axios from "axios";
 import React, { useEffect, useState } from "react";
 import { API_URL } from "../../../constant";
 import Modal from "../../components/Modal";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 export default function PeminjamanIndex() {
     const [dataPeminjaman, setDataPeminjaman] = useState([]);
@@ -20,9 +21,9 @@ export default function PeminjamanIndex() {
     const [daysLate, setDaysLate] = useState(0);
     const [DendaTelat, setDendaTelat] = useState([]);
     const [FormDenda, setFormDenda] = useState({
-       jumlah_denda: "",
-       jenis_denda: "terlambat",
-       deskripsi: "Member Telat Mengembalikan Buku",
+        jumlah_denda: "",
+        jenis_denda: "terlambat",
+        deskripsi: "Member Telat Mengembalikan Buku",
     });
 
     useEffect(() => {
@@ -40,10 +41,10 @@ export default function PeminjamanIndex() {
         }).then((res) => {
             setDataPeminjaman(res.data.data);
         }).catch((err) => {
-            if (err.response.status === 401) {
+            if (err.response && err.response.status === 401) {
                 localStorage.removeItem("token");
                 window.location.href = "/";
-            };
+            }
             console.error("Gagal memuat data:", err);
         });
     };
@@ -112,7 +113,7 @@ export default function PeminjamanIndex() {
             const lateDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
             const denda = lateDays * 1000;
             setDendaTelat(denda);
-            setDaysLate(lateDays);        
+            setDaysLate(lateDays);
             setIsReturnModalOpen(false);  // tutup modal pengembalian
             setModalDenda(true);          // buka modal denda untuk input manual
             return;                      // hentikan proses pengembalian dulu
@@ -130,7 +131,6 @@ export default function PeminjamanIndex() {
                 fetchData();
             })
             .catch((err) => {
-                
                 console.error("Gagal Mengembalikan Peminjaman:", err);
             });
     }
@@ -168,12 +168,20 @@ export default function PeminjamanIndex() {
                 console.error("Gagal Menambahkan Denda atau Mengubah Status:", err);
             });
     }
-    
-    
 
-    
-    
-    
+    // Grafik bar peminjaman per bulan
+    const getPeminjamanPerBulan = () => {
+        const bulanMap = {};
+        dataPeminjaman.forEach((item) => {
+            if (!item.tgl_pinjam) return;
+            const date = new Date(item.tgl_pinjam);
+            const bulan = date.toLocaleString('id-ID', { month: 'short', year: 'numeric' });
+            bulanMap[bulan] = (bulanMap[bulan] || 0) + 1;
+        });
+        return Object.entries(bulanMap)
+            .sort((a, b) => new Date('1 ' + a[0]) - new Date('1 ' + b[0]))
+            .map(([bulan, jumlah]) => ({ bulan, jumlah }));
+    };
 
     return (
         <>
@@ -182,6 +190,26 @@ export default function PeminjamanIndex() {
             </button>
 
             <div className="container mt-5">
+                {/* Grafik Bar Peminjaman per Bulan */}
+                <div className="card shadow border-0 mb-4">
+                    <div className="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                        <h5 className="mb-0">
+                            <i className="bi bi-bar-chart-fill me-2"></i>Grafik Peminjaman per Bulan
+                        </h5>
+                    </div>
+                    <div className="card-body">
+                        <ResponsiveContainer width="100%" height={300}>
+                            <BarChart data={getPeminjamanPerBulan()} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="bulan" />
+                                <YAxis allowDecimals={false} />
+                                <Tooltip />
+                                <Bar dataKey="jumlah" fill="#6366f1" name="Jumlah Peminjaman" />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+                {/* ...existing code for table ... */}
                 <div className="card shadow border-0">
                     <div className="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                         <h5 className="mb-0">
@@ -319,7 +347,6 @@ export default function PeminjamanIndex() {
                     <button type="submit" className="btn btn-danger">Submit Denda</button>
                 </form>
             </Modal>
-
         </>
     );
 }
